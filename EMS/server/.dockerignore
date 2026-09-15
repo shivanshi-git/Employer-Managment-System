@@ -1,0 +1,35 @@
+# Dependencies — always re-installed inside Docker
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files — injected at runtime via env_file / -e
+.env
+.env.*
+
+# Build artifacts
+dist
+build
+
+# Dev tooling
+.eslintrc*
+.prettierrc*
+*.test.js
+*.spec.js
+__tests__
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Docker files themselves (not needed inside image)
+Dockerfile*
+docker-compose*
+.dockerignore
