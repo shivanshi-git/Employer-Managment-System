@@ -92,38 +92,22 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 ## ⚙️ DevOps & Infrastructure
 
-### CI/CD Pipeline (GitHub Actions)
+### CI/CD Pipeline (GitHub Actions & Jenkins)
 
-Every push and pull request to `main` triggers the CI pipeline:
+This repository supports both **GitHub Actions** and **Jenkins** pipelines:
 
-```
-Push / PR to main
-       │
-       ├─ 🔍 Lint & Security Audit (client + server in parallel)
-       │      ├─ ESLint
-       │      └─ npm audit --audit-level=high
-       │
-       ├─ 🐳 Docker Build Validation
-       │      ├─ Build server image (multi-stage)
-       │      └─ Build client image (multi-stage → Nginx)
-       │
-       └─ 🚀 Deploy to Vercel  (push to main only)
-              ├─ Deploy server
-              └─ Deploy client
-```
+#### 1. GitHub Actions (`.github/workflows/ci.yml`)
+Every push and pull request to `main` triggers:
+- Parallel Linting (`eslint`) & Vulnerability Auditing (`npm audit --audit-level=high`)
+- Multi-stage Docker build validation for both client and server
+- Automated zero-downtime deployment
 
-#### Required GitHub Secrets (for deploy step)
-
-| Secret | Description |
-|---|---|
-| `VERCEL_TOKEN` | Vercel API token |
-| `VERCEL_ORG_ID` | Your Vercel organization ID |
-| `VERCEL_SERVER_PROJECT_ID` | Vercel project ID for server |
-| `VERCEL_CLIENT_PROJECT_ID` | Vercel project ID for client |
-
-### Weekly Security Audit
-
-A scheduled workflow runs every Monday and audits both client and server dependencies with `npm audit`. Results are uploaded as GitHub Actions artifacts and the job fails if high-severity vulnerabilities are detected.
+#### 2. Jenkins Pipeline (`Jenkinsfile`)
+A production-ready **Declarative Jenkins Pipeline** providing:
+- Parallel stages for client & server code quality + security audits
+- Automated production asset builds with Vite
+- Docker container build and image tagging (`:latest` and `:${BUILD_NUMBER}`)
+- Workspace cleanup (`cleanWs`) and build-retention policies
 
 ### Health Check Endpoint
 

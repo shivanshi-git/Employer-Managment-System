@@ -1,0 +1,93 @@
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        DOCKER_IMAGE_SERVER = 'quickems-server'
+        DOCKER_IMAGE_CLIENT = 'quickems-client'
+        BUILD_TAG = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "📦 Checking out repository..."
+                checkout scm
+            }
+        }
+
+        stage('Code Quality & Security Audit') {
+            parallel {
+                stage('Client: Lint & Audit') {
+                    steps {
+                        dir('EMS/client') {
+                            echo "🔍 Running Client ESLint & Security Audit..."
+                            sh 'npm ci'
+                            sh 'npm run lint'
+                            sh 'npm audit --audit-level=high'
+                        }
+                    }
+                }
+                stage('Server: Security Audit') {
+                    steps {
+                        dir('EMS/server') {
+                            echo "🔍 Running Server Security Audit..."
+                            sh 'npm ci'
+                            sh 'npm audit --audit-level=high'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Client Build') {
+            steps {
+                dir('EMS/client') {
+                    echo "⚙️ Building React Vite Production Assets..."
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Docker Image Build') {
+            steps {
+                dir('EMS') {
+                    echo "🐳 Building Docker images for Server & Client..."
+                    sh "docker build -f docker/Dockerfile.server -t ${DOCKER_IMAGE_SERVER}:${BUILD_TAG} -t ${DOCKER_IMAGE_SERVER}:latest ./server"
+                    sh "docker build -f docker/Dockerfile.client -t ${DOCKER_IMAGE_CLIENT}:${BUILD_TAG} -t ${DOCKER_IMAGE_CLIENT}:latest ./client"
+                }
+            }
+        }
+
+        stage('Deploy / Verification') {
+            when {
+                branch 'main'
+            }
+            steps {
+                dir('EMS') {
+                    echo "🚀 Running Docker Compose verification test..."
+                    sh 'docker compose -f docker-compose.yml config --quiet'
+                    echo "✅ Deployment configuration verified successfully for production!"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning workspace..."
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+        success {
+            echo "🎉 Pipeline completed successfully! Both Client & Server images are ready."
+        }
+        failure {
+            echo "❌ Pipeline failed! Check the console output above for error logs."
+        }
+    }
+}
